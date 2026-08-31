@@ -2,7 +2,6 @@ import asyncio
 import json
 
 from providers.base import Provider
-from tools import tool_map, tools
 
 max_loop_iterations = 10  # Set a maximum number of iterations to prevent infinite loops
 system = """
@@ -10,13 +9,15 @@ You are a helpful coding assistant. You help users by reading files, executing c
 """
 
 
-async def run_agent_loop(provider: Provider, messages: list[dict] | None = None):
+async def run_agent_loop(provider: Provider, messages: list[dict] | None = None, tools: list[dict] | None = None):
     if messages is None:
         messages = []
 
     for _ in range(max_loop_iterations):
         response = await provider.complete(
-            system=system, messages=messages, tools=tools
+            system=system,
+            messages=messages,
+            tools=tools,
         )
         if not response:
             print("No response from provider.")
@@ -51,8 +52,9 @@ async def run_agent_loop(provider: Provider, messages: list[dict] | None = None)
             tool_args = call.arguments
 
             tool = tool_map.get(tool_name)
+
             if tool:
-                result = tool(**tool_args)
+                result = tool.execute(tool_args)
                 print(
                     f"Tool {tool_name} called with arguments {tool_args}. Result: {result}"
                 )
@@ -81,6 +83,7 @@ if __name__ == "__main__":
     import asyncio
 
     from providers.deepseek import DeepSeekProvider
+    from tools import tool_map
 
     provider = DeepSeekProvider()
 
@@ -93,5 +96,6 @@ if __name__ == "__main__":
                     "content": "创建一个 test.txt文件，内容为 'Hello, World!'",
                 }
             ],
+            tools=[tool.input_schema() for tool in tool_map.values()]
         )
     )

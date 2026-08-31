@@ -2,14 +2,14 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 
-@dataclass
+@dataclass(frozen=True)
 class ToolCall:
     id: str
     name: str
     arguments: dict[str, object]
 
 
-@dataclass
+@dataclass(frozen=True)
 class AssistantReply:
     content: str | None
     tool_calls: list[ToolCall] = field(default_factory=list)
