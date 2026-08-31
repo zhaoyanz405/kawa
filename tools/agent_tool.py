@@ -1,12 +1,12 @@
-from dataclasses import dataclass
 from collections.abc import Callable
+
 
 class AgentTool:
     def __init__(
         self,
         name: str,
         description: str,
-        parameters: dict,
+        parameters: dict[str, object],
         func: Callable[..., dict[str, object]],
     ) -> None:
         self.name = name
@@ -14,7 +14,7 @@ class AgentTool:
         self.parameters = parameters
         self.func = func
 
-    def input_schema(self) -> dict:
+    def input_schema(self) -> dict[str, object]:
         """Return the input schema for the tool."""
         return {
             "type": "function",
@@ -30,6 +30,6 @@ class AgentTool:
             },
         }
 
-    def execute(self, kwargs) -> dict:
+    def execute(self, kwargs: dict[str, object]) -> dict[str, object]:
         """Execute the tool with the given arguments."""
         return self.func(**kwargs)

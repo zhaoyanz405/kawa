@@ -1,7 +1,15 @@
 import asyncio
 import json
 
+from events import (
+    AgentEndEvent,
+    AgentStartEvent,
+    MessageEvent,
+    ToolExecutionEndEvent,
+    ToolExecutionStartEvent,
+)
 from providers.base import Provider
+from tools import tool_map
 
 max_loop_iterations = 10  # Set a maximum number of iterations to prevent infinite loops
 system = """
@@ -9,9 +17,15 @@ You are a helpful coding assistant. You help users by reading files, executing c
 """
 
 
-async def run_agent_loop(provider: Provider, messages: list[dict] | None = None, tools: list[dict] | None = None):
+async def run_agent_loop(
+    provider: Provider,
+    tools: list[dict],
+    messages: list[dict] | None = None,
+):
     if messages is None:
         messages = []
+
+    yield AgentStartEvent()
 
     for _ in range(max_loop_iterations):
         response = await provider.complete(
@@ -19,13 +33,9 @@ async def run_agent_loop(provider: Provider, messages: list[dict] | None = None,
             messages=messages,
             tools=tools,
         )
-        if not response:
-            print("No response from provider.")
-            break
 
-        print(f"=== Assistant: {response.content}")
+        yield MessageEvent(role="assistant", content=response.content)
         if not response.tool_calls:
-            print(response.content)
             break
 
         messages.append(
@@ -54,10 +64,9 @@ async def run_agent_loop(provider: Provider, messages: list[dict] | None = None,
             tool = tool_map.get(tool_name)
 
             if tool:
+                yield ToolExecutionStartEvent(name=tool_name, arguments=tool_args)
                 result = tool.execute(tool_args)
-                print(
-                    f"Tool {tool_name} called with arguments {tool_args}. Result: {result}"
-                )
+                yield ToolExecutionEndEvent(name=tool_name, result=result)
                 messages.append(
                     {
                         "role": "tool",
@@ -66,7 +75,8 @@ async def run_agent_loop(provider: Provider, messages: list[dict] | None = None,
                     }
                 )
             else:
-                print(f"Tool {tool_name} not found.")
+                yield ToolExecutionStartEvent(name=tool_name, arguments=tool_args)
+                yield ToolExecutionEndEvent(name=tool_name, result={"error": f"Tool {tool_name} not found."})
                 messages.append(
                     {
                         "role": "tool",
@@ -78,24 +88,27 @@ async def run_agent_loop(provider: Provider, messages: list[dict] | None = None,
                     }
                 )
 
+    yield AgentEndEvent()
+
+async def main():
+    from providers.deepseek import DeepSeekProvider
+
+    provider = DeepSeekProvider()
+
+    async for event in run_agent_loop(
+        provider=provider,
+        messages=[
+            {
+                "role": "user",
+                "content": "创建一个 test.txt文件，内容为 'Hello, World!'",
+            }
+        ],
+        tools=[tool.input_schema() for tool in tool_map.values()]
+    ):
+        print(event)
+
 
 if __name__ == "__main__":
     import asyncio
 
-    from providers.deepseek import DeepSeekProvider
-    from tools import tool_map
-
-    provider = DeepSeekProvider()
-
-    asyncio.run(
-        run_agent_loop(
-            provider=provider,
-            messages=[
-                {
-                    "role": "user",
-                    "content": "创建一个 test.txt文件，内容为 'Hello, World!'",
-                }
-            ],
-            tools=[tool.input_schema() for tool in tool_map.values()]
-        )
-    )
+    asyncio.run(main())
