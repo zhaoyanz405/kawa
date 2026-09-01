@@ -1,107 +1,61 @@
 import asyncio
 import json
 
-from events import (
-    AgentEndEvent,
-    AgentStartEvent,
-    MessageEvent,
-    ToolExecutionEndEvent,
-    ToolExecutionStartEvent,
-)
+from agent_loop import run_agent_loop
 from providers.base import Provider
-from tools import tool_map
-
-max_loop_iterations = 10  # Set a maximum number of iterations to prevent infinite loops
-system = """
-You are a helpful coding assistant. You help users by reading files, executing commands, editing code, and writing new files.
-"""
+from tools import write_to_file_tool, AgentTool
 
 
-class AgentLoop:
+class AgentHarness:
     def __init__(
-        self, provider: Provider, tools: list[dict], messages: list[dict] | None = None
+        self,
+        provider: Provider,
+        tools: list[AgentTool],
+        messages: list[dict] | None = None,
+        max_loop_iterations: int = 10,
     ):
         self.provider = provider
         self.tools = tools
         self._messages = messages if messages is not None else []
+        self._running = False
+        self.max_loop_iterations = max_loop_iterations
+        self.system = """
+You are a helpful coding assistant. You help users by reading files, executing commands, editing code, and writing new files.
+"""
 
-    def prompt(self, content: str):
+    async def prompt(self, content: str):
+        if self._running:
+            raise RuntimeError(
+                "Agent is already running. Please wait for it to finish."
+            )
+
         self._messages.append({"role": "user", "content": content})
-        return self.run()
 
-    async def _run_agent_loop(self):
-        yield AgentStartEvent()
-
-        for _ in range(max_loop_iterations):
-            response = await self.provider.complete(
-                system=system,
-                messages=self._messages,
+        self._running = True
+        try:
+            async for event in run_agent_loop(
+                provider=self.provider,
                 tools=self.tools,
-            )
+                messages=self._messages,
+                max_loop_iterations=self.max_loop_iterations,
+                system=self.system,
+            ):
+                yield event
+        finally:
+            self._running = False
 
-            yield MessageEvent(role="assistant", content=response.content)
-            if not response.tool_calls:
-                break
 
-            self._messages.append(
-                {
-                    "role": "assistant",
-                    "content": response.content,
-                    "tool_calls": [
-                        {
-                            "id": call.id,
-                            "type": "function",
-                            "function": {
-                                "name": call.name,
-                                "arguments": json.dumps(
-                                    call.arguments, ensure_ascii=False
-                                ),
-                            },
-                        }
-                        for call in response.tool_calls
-                    ],
-                }
-            )
-
-            for call in response.tool_calls:
-                tool_id = call.id
-                tool_name = call.name
-                tool_args = call.arguments
-
-                tool = tool_map.get(tool_name)
-
-                if tool:
-                    yield ToolExecutionStartEvent(name=tool_name, arguments=tool_args)
-                    result = tool.execute(tool_args)
-                    yield ToolExecutionEndEvent(name=tool_name, result=result)
-                    self._messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_id,
-                            "content": json.dumps(result, ensure_ascii=False),
-                        }
-                    )
-                else:
-                    yield ToolExecutionStartEvent(name=tool_name, arguments=tool_args)
-                    yield ToolExecutionEndEvent(
-                        name=tool_name, result={"error": f"Tool {tool_name} not found."}
-                    )
-                    self._messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_id,
-                            "content": json.dumps(
-                                {"error": f"Tool {tool_name} not found."},
-                                ensure_ascii=False,
-                            ),
-                        }
-                    )
-
-        yield AgentEndEvent()
-
-    async def run(self):
-        async for event in self._run_agent_loop():
-            print(event)
+class CLI:
+    def __init__(self, harness: AgentHarness):
+        self.harness = harness
+    
+    async def start(self) -> str:
+        while True:
+            print("--------------------------------")
+            user_input = input(">: ")
+            if user_input.strip():
+                async for event in self.harness.prompt(user_input):
+                    print(event)
 
 
 if __name__ == "__main__":
@@ -109,9 +63,8 @@ if __name__ == "__main__":
 
     provider = DeepSeekProvider()
 
-    loop = AgentLoop(
-        provider=provider, tools=[tool.input_schema() for tool in tool_map.values()]
+    harness = AgentHarness(
+        provider=provider, tools=[write_to_file_tool], max_loop_iterations=10
     )
-    asyncio.run(
-        loop.prompt("Write a file named hello.txt with the content 'Hello, World!'")
-    )
+    cli = CLI(harness=harness)
+    asyncio.run(cli.start())
