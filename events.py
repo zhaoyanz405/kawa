@@ -1,4 +1,7 @@
 from dataclasses import dataclass
+from typing import Literal
+
+EndReason = Literal["completed", "max_iterations", "cancelled"]
 
 
 @dataclass(frozen=True)
@@ -29,4 +32,14 @@ class ToolExecutionEndEvent:
 
 @dataclass(frozen=True)
 class AgentEndEvent:
+    reason: EndReason = "completed"
     type: str = "agent_end"
+
+
+AgentEvent = (
+    AgentStartEvent
+    | MessageEvent
+    | ToolExecutionStartEvent
+    | ToolExecutionEndEvent
+    | AgentEndEvent
+)

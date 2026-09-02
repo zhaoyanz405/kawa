@@ -1,19 +1,23 @@
 import asyncio
+from collections import deque
 
 from fake_provider import FakeProvider
 
+from agent_loop import run_agent_loop
 from events import (
     AgentEndEvent,
     AgentStartEvent,
     MessageEvent,
     ToolExecutionEndEvent,
 )
-from main import run_agent_loop
 from providers.base import AssistantReply, ToolCall
 from tools.helpers import write_to_file_tool
 
 
 async def collect(*args, **kwargs):
+    kwargs.setdefault("max_loop_iterations", 10)
+    kwargs.setdefault("system", "test")
+    kwargs.setdefault("steering_messages", deque())
     return [event async for event in run_agent_loop(*args, **kwargs)]
 
 
@@ -23,7 +27,7 @@ def test_direct_answer_event_sequence():
     events = asyncio.run(
         collect(
             provider,
-            tools=[write_to_file_tool.input_schema()],
+            tools=[write_to_file_tool],
             messages=[{"role": "user", "content": "hi"}],
         )
     )
@@ -56,7 +60,7 @@ def test_tool_loop_event_sequence(tmp_path):
     events = asyncio.run(
         collect(
             provider,
-            tools=[write_to_file_tool.input_schema()],
+            tools=[write_to_file_tool],
             messages=[{"role": "user", "content": "write a file"}],
         )
     )
@@ -84,8 +88,11 @@ def test_event_sequence_is_consumable_by_any_consumer():
     async def render():
         async for event in run_agent_loop(
             provider,
-            tools=[write_to_file_tool.input_schema()],
+            tools=[write_to_file_tool],
             messages=[{"role": "user", "content": "hi"}],
+            max_loop_iterations=10,
+            system="test",
+            steering_messages=deque(),
         ):
             if isinstance(event, MessageEvent):
                 rendered.append(f"[{event.role}] {event.content}")
