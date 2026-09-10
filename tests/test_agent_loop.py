@@ -2,6 +2,8 @@ import asyncio
 from collections import deque
 
 from agent_loop import run_agent_loop
+from agent_messages import UserMessage
+from agent_session import AgentSession
 from events import AgentEndEvent, AgentStartEvent, MessageEvent
 from providers.base import AssistantReply, ToolCall
 from tools.agent_tool import AgentTool
@@ -42,13 +44,14 @@ async def collect_events(
     steering_messages: deque[str] | None = None,
 ) -> list[object]:
     queue = steering_messages if steering_messages is not None else deque()
+    session = AgentSession()
 
     return [
         event
         async for event in run_agent_loop(
             provider=provider,
             tools=tools,
-            messages=[],
+            session=session,
             max_loop_iterations=max_loop_iterations,
             system="test",
             steering_messages=queue,
@@ -131,16 +134,15 @@ def test_history_round_trip_order(tmp_path) -> None:
                 AssistantReply(content="Done."),
             ]
         )
-        messages: list[dict[str, object]] = [
-            {"role": "user", "content": "write a file"}
-        ]
+        session = AgentSession()
+        session.append(UserMessage(content="write a file"))
 
         events = [
             event
             async for event in run_agent_loop(
                 provider=provider,
                 tools=[write_to_file_tool],
-                messages=messages,
+                session=session,
                 max_loop_iterations=10,
                 system="test",
                 steering_messages=deque(),
@@ -255,7 +257,7 @@ def test_cancellation_emits_cancelled_end_event() -> None:
             async for event in run_agent_loop(
                 provider=BlockingProvider(),
                 tools=[],
-                messages=[],
+                session=AgentSession(),
                 max_loop_iterations=2,
                 system="test",
                 steering_messages=deque(),

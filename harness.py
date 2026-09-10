@@ -5,14 +5,15 @@ from agent_loop import run_agent_loop
 from events import AgentEvent
 from providers.base import Provider
 from tools.agent_tool import AgentTool
-
+from agent_session import AgentSession
+from agent_messages import UserMessage
 
 class AgentHarness:
     def __init__(
         self,
         provider: Provider,
         tools: list[AgentTool],
-        messages: list[dict] | None = None,
+        session: AgentSession | None = None,
         max_loop_iterations: int = 10,
     ) -> None:
         if max_loop_iterations < 1:
@@ -20,7 +21,7 @@ class AgentHarness:
 
         self.provider = provider
         self.tools = tools
-        self._messages = messages if messages is not None else []
+        self.session = session or AgentSession()
         self._running = False
         self.max_loop_iterations = max_loop_iterations
         self.system = """
@@ -49,11 +50,11 @@ You are a helpful coding assistant. You help users by reading files, executing c
 
     async def _run(self, content: str) -> AsyncIterator[AgentEvent]:
         try:
-            self._messages.append({"role": "user", "content": content})
+            self.session.append(UserMessage(content=content))
             async for event in run_agent_loop(
                 provider=self.provider,
                 tools=self.tools,
-                messages=self._messages,
+                session=self.session,
                 max_loop_iterations=self.max_loop_iterations,
                 system=self.system,
                 steering_messages=self._steering_queue,

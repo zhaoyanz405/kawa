@@ -4,6 +4,8 @@ from collections import deque
 from fake_provider import FakeProvider
 
 from agent_loop import run_agent_loop
+from agent_messages import UserMessage
+from agent_session import AgentSession
 from events import (
     AgentEndEvent,
     AgentStartEvent,
@@ -15,6 +17,7 @@ from tools.helpers import write_to_file_tool
 
 
 async def collect(*args, **kwargs):
+    kwargs.setdefault("session", AgentSession())
     kwargs.setdefault("max_loop_iterations", 10)
     kwargs.setdefault("system", "test")
     kwargs.setdefault("steering_messages", deque())
@@ -28,7 +31,7 @@ def test_direct_answer_event_sequence():
         collect(
             provider,
             tools=[write_to_file_tool],
-            messages=[{"role": "user", "content": "hi"}],
+            session=session_with("hi"),
         )
     )
 
@@ -61,7 +64,7 @@ def test_tool_loop_event_sequence(tmp_path):
         collect(
             provider,
             tools=[write_to_file_tool],
-            messages=[{"role": "user", "content": "write a file"}],
+            session=session_with("write a file"),
         )
     )
 
@@ -89,7 +92,7 @@ def test_event_sequence_is_consumable_by_any_consumer():
         async for event in run_agent_loop(
             provider,
             tools=[write_to_file_tool],
-            messages=[{"role": "user", "content": "hi"}],
+            session=session_with("hi"),
             max_loop_iterations=10,
             system="test",
             steering_messages=deque(),
@@ -100,3 +103,9 @@ def test_event_sequence_is_consumable_by_any_consumer():
     asyncio.run(render())
 
     assert rendered == ["[assistant] Hi!"]
+
+
+def session_with(content: str) -> AgentSession:
+    session = AgentSession()
+    session.append(UserMessage(content=content))
+    return session

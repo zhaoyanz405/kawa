@@ -14,12 +14,14 @@ from events import (
 )
 from providers.base import Provider
 from tools.agent_tool import AgentTool
+from agent_session import AgentSession
+from agent_messages import UserMessage, AgentMessages, AssistantMessage, ToolMessage
 
 
 async def run_agent_loop(
     provider: Provider,
     tools: list[AgentTool],
-    messages: list[dict[str, object]],
+    session: AgentSession,
     max_loop_iterations: int,
     system: str,
     steering_messages: deque[str],
@@ -36,25 +38,18 @@ async def run_agent_loop(
     try:
         while turns_used < max_loop_iterations:
             if steering_messages:
-                messages.append(
-                    {"role": "user", "content": steering_messages.popleft()}
-                )
+                session.append(UserMessage(content=steering_messages.popleft()))
 
             turns_used += 1
             response = await provider.complete(
                 system=system,
-                messages=messages,
+                messages=session.messages,
                 tools=[tool.input_schema() for tool in tools],
             )
 
             yield MessageEvent(role="assistant", content=response.content)
             if not response.tool_calls:
-                messages.append(
-                    {
-                        "role": "assistant",
-                        "content": response.content,
-                    }
-                )
+                session.append(AssistantMessage(content=response.content))
 
                 if not steering_messages:
                     end_reason = "completed"
@@ -62,11 +57,9 @@ async def run_agent_loop(
 
                 continue
 
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": response.content,
-                    "tool_calls": [
+            session.append(AssistantMessage(
+                content=response.content,
+                tool_calls=[
                         {
                             "id": call.id,
                             "type": "function",
@@ -79,7 +72,7 @@ async def run_agent_loop(
                         }
                         for call in response.tool_calls
                     ],
-                }
+                )
             )
 
             for call in response.tool_calls:
@@ -96,13 +89,10 @@ async def run_agent_loop(
                     yield ToolExecutionStartEvent(name=tool_name, arguments=tool_args)
 
                 yield ToolExecutionEndEvent(name=tool_name, result=result)
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": tool_id,
-                        "content": json.dumps(result, ensure_ascii=False),
-                    }
-                )
+                session.append(ToolMessage(
+                    tool_call_id=tool_id,
+                    content=json.dumps(result, ensure_ascii=False)
+                ))
 
         if end_reason is None:
             yield MessageEvent(
