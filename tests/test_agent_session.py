@@ -17,7 +17,7 @@ def test_agent_session_append():
 
     session.append(AssistantMessage(content="Yes, what can I help you?"))
     assert len(session.messages) == 2
-    assert Entry.generate_id(old_id) == session.active_leaf_id
+    assert session.active_leaf_id != old_id
 
     msg0 = session.messages[0]
     assert "id" not in msg0

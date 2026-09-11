@@ -29,11 +29,23 @@ def test_open_session_in_mem():
 def test_open_session_from_exist_file(tmp_cwd):
     session_file = tmp_cwd / "test.jsonl"
     test_msgs = [
-        json.dumps({"role": "user", "content": "hello"}) + "\n",
-        json.dumps({"role": "assistant", "content": "hello"}) + "\n",
+        json.dumps({"id": "1", "parent_id": "0", "role": "user", "content": "hi"})
+        + "\n",
+        json.dumps(
+            {
+                "id": "2",
+                "parent_id": "1",
+                "role": "assistant",
+                "content": "Hello! How can I help you today?",
+            }
+        )
+        + "\n",
     ]
     with open(session_file, "w") as f:
         f.writelines(test_msgs)
 
     session = open_session(str(session_file))
-    assert session.messages == [json.loads(message) for message in test_msgs]
+    assert session.messages == [
+        {"role": "user", "content": "hi"},
+        {"role": "assistant", "content": "Hello! How can I help you today?"},
+    ]

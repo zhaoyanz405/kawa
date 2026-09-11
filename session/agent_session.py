@@ -16,9 +16,10 @@ class AgentSession:
     def load(cls, storage: BaseSessionStorage):
         instance = cls(storage=storage)
         for msg in storage.read_all():
+            id = msg.get("id")
             parent_id = msg.get("parent_id")
             agent_msg = load_from_dict(msg)
-            entry = Entry(parent_id=parent_id, message=agent_msg)
+            entry = Entry(id=id, parent_id=parent_id, message=agent_msg)
             instance.set_entry(entry)
             instance.active_leaf_id = entry.id
         return instance
