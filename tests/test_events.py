@@ -5,7 +5,6 @@ from fake_provider import FakeProvider
 
 from agent_loop import run_agent_loop
 from agent_messages import UserMessage
-from agent_session import AgentSession
 from events import (
     AgentEndEvent,
     AgentStartEvent,
@@ -13,6 +12,7 @@ from events import (
     ToolExecutionEndEvent,
 )
 from providers.base import AssistantReply, ToolCall
+from session.agent_session import AgentSession
 from tools.helpers import write_to_file_tool
 
 

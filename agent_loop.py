@@ -4,7 +4,6 @@ from collections import deque
 from collections.abc import AsyncIterator
 
 from agent_messages import AssistantMessage, ToolMessage, UserMessage
-from agent_session import AgentSession
 from events import (
     AgentEndEvent,
     AgentEvent,
@@ -15,6 +14,7 @@ from events import (
     ToolExecutionStartEvent,
 )
 from providers.base import Provider
+from session.agent_session import AgentSession
 from tools.agent_tool import AgentTool
 
 

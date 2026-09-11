@@ -43,3 +43,24 @@ class ToolMessage(AgentMessages):
         base_dict = super().to_dict()
         base_dict["tool_call_id"] = self.tool_call_id
         return base_dict
+
+
+def load_from_dict(data: dict) -> AgentMessages:
+    if not data:
+        raise ValueError("Empty data.")
+
+    role = data.get("role")
+    if not role:
+        raise ValueError("Invalid Data. No role.")
+
+    if role == "user":
+        return UserMessage(content=data.get("content"))
+
+    if role == "assistant":
+        return AssistantMessage(content=data.get("content"))
+
+    if role == "tool":
+        return ToolMessage(
+            content=data.get("content"),
+            tool_call_id=data.get("tool_call_id"),
+        )

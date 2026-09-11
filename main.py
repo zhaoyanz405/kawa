@@ -3,10 +3,10 @@ import os
 
 import click
 
-from agent_session import AgentSession
 from cli import CLI
 from harness import AgentHarness
 from providers.deepseek import DeepSeekProvider
+from session.agent_session import AgentSession
 from storage.base import JsonlSessionStorage
 from tools import write_to_file_tool
 

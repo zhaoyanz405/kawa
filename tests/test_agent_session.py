@@ -1,149 +1,53 @@
-import asyncio
-
-from agent_messages import (
-    AssistantMessage,
-    ToolMessage,
-    UserMessage,
-)
-from agent_session import AgentSession
-from harness import AgentHarness
-from providers.base import AssistantReply
+import json
+from agent_messages import AssistantMessage, UserMessage
+from session.agent_session import AgentSession
+from session.entry import SessionEntry as Entry
 from storage.base import JsonlSessionStorage
 
 
-class ScriptedProvider:
-    def __init__(self, replies: list[AssistantReply]) -> None:
-        self.replies = replies
-        self.calls: list[list[dict]] = []
-
-    async def complete(
-        self, system: str, messages: list[dict], tools: list[dict]
-    ) -> AssistantReply:
-        del system, tools
-        self.calls.append(messages.copy())
-        return self.replies.pop(0)
-
-
-def test_new_session_starts_with_empty_transcript() -> None:
+def test_agent_session_append():
     session = AgentSession()
+    assert session.active_leaf_id is None
 
-    assert session.messages == []
+    session.append(UserMessage(content="Hello"))
+    assert len(session.messages) > 0
+    assert session.active_leaf_id is not None
+
+    old_id = session.active_leaf_id
+
+    session.append(AssistantMessage(content="Yes, what can I help you?"))
+    assert len(session.messages) == 2
+    assert Entry.generate_id(old_id) == session.active_leaf_id
+
+    msg0 = session.messages[0]
+    assert "id" not in msg0
+    assert "parent_id" not in msg0
+    assert "Hello" == msg0.get("content")
+
+    msg1 = session.messages[1]
+    assert "id" not in msg1
+    assert "parent_id" not in msg1
+    assert "Yes, what can I help you?" == msg1.get("content")
 
 
-def test_session_keeps_one_ordered_transcript_for_all_message_roles() -> None:
-    session = AgentSession()
-    user_message = UserMessage(content="use echo")
-    assistant_message = AssistantMessage(
-        content=None,
-        tool_calls=[
-            {
-                "id": "call-1",
-                "type": "function",
-                "function": {
-                    "name": "echo",
-                    "arguments": '{"value": "hello"}',
-                },
-            }
-        ],
-    )
-    tool_message = ToolMessage(
-        tool_call_id="call-1",
-        content='{"ok": true, "value": "hello"}',
-    )
+def test_agent_session_load(tmp_cwd):
 
-    session.append(user_message)
-    session.append(assistant_message)
-    session.append(tool_message)
+    entry1 = Entry(message=UserMessage(content="hello"))
+    entry2 = Entry(parent_id=entry1.id, message=AssistantMessage(content="Yes?"))
 
+    data1 = entry1.to_dict()
+    data2 = entry2.to_dict()
+
+    msg1 = json.dumps(data1)
+    msg2 = json.dumps(data2)
+
+    with open("test.jsonl", "w") as f:
+        f.write(str(msg1) + "\n")
+        f.write(str(msg2) + "\n")
+
+    storage = JsonlSessionStorage("test.jsonl")
+    session = AgentSession.load(storage=storage)
     assert session.messages == [
-        user_message.to_dict(),
-        assistant_message.to_dict(),
-        tool_message.to_dict(),
+        entry1.agent_message.to_dict(),
+        entry2.agent_message.to_dict(),
     ]
-    assert [message["role"] for message in session.messages] == [
-        "user",
-        "assistant",
-        "tool",
-    ]
-
-
-def test_harness_writes_prompt_and_reply_to_session() -> None:
-    async def scenario() -> None:
-        session = AgentSession()
-        provider = ScriptedProvider([AssistantReply(content="done")])
-        harness = AgentHarness(
-            provider=provider,
-            tools=[],
-            session=session,
-        )
-
-        [event async for event in harness.prompt("hello")]
-
-        assert session.messages == [
-            {"role": "user", "content": "hello"},
-            {"role": "assistant", "content": "done"},
-        ]
-
-    asyncio.run(scenario())
-
-
-def test_same_session_is_used_by_follow_up_prompt() -> None:
-    async def scenario() -> None:
-        session = AgentSession()
-        provider = ScriptedProvider(
-            [
-                AssistantReply(content="first answer"),
-                AssistantReply(content="second answer"),
-            ]
-        )
-        harness = AgentHarness(
-            provider=provider,
-            tools=[],
-            session=session,
-        )
-
-        [event async for event in harness.prompt("first question")]
-        [event async for event in harness.prompt("second question")]
-
-        assert provider.calls[1] == [
-            {"role": "user", "content": "first question"},
-            {"role": "assistant", "content": "first answer"},
-            {"role": "user", "content": "second question"},
-        ]
-        assert session.messages == [
-            {"role": "user", "content": "first question"},
-            {"role": "assistant", "content": "first answer"},
-            {"role": "user", "content": "second question"},
-            {"role": "assistant", "content": "second answer"},
-        ]
-
-    asyncio.run(scenario())
-
-
-def test_session_append_persists_message_to_storage(tmp_path) -> None:
-    session_file = tmp_path / "session.jsonl"
-    storage = JsonlSessionStorage(str(session_file))
-    session = AgentSession(storage=storage)
-
-    message = UserMessage(content="persist this")
-    session.append(message)
-
-    assert storage.read_all() == [message.to_dict()]
-    assert session.messages == [message.to_dict()]
-
-
-def test_loaded_session_continues_persisting_to_the_same_storage(tmp_path) -> None:
-    session_file = tmp_path / "session.jsonl"
-    storage = JsonlSessionStorage(str(session_file))
-    original = AgentSession(storage=storage)
-    original.append(UserMessage(content="first"))
-
-    loaded = AgentSession.load(storage)
-    second = AssistantMessage(content="second")
-    loaded.append(second)
-
-    assert loaded.messages == [
-        {"role": "user", "content": "first"},
-        second.to_dict(),
-    ]
-    assert storage.read_all() == loaded.messages

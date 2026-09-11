@@ -4,9 +4,9 @@ from collections.abc import AsyncIterator
 
 from agent_loop import run_agent_loop
 from agent_messages import UserMessage
-from agent_session import AgentSession
 from events import AgentEvent
 from providers.base import Provider
+from session.agent_session import AgentSession
 from tools.agent_tool import AgentTool
 
 
