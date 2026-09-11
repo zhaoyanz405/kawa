@@ -8,17 +8,18 @@ class SessionEntry:
         self,
         id: str | None = None,
         parent_id: str | None = None,
-        message: AgentMessages | None = None,
+        message: AgentMessages = None,
     ):
         if not id:
             id = str(uuid4())
 
         self.id = id
 
-        if not parent_id:
-            parent_id = ""
-
         self.parent_id = parent_id
+        
+        if not message:
+            raise ValueError("Entry message can't be empty.")
+        
         self.agent_message: AgentMessages = message
 
     def to_dict(self):

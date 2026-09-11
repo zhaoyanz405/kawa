@@ -57,10 +57,15 @@ def load_from_dict(data: dict) -> AgentMessages:
         return UserMessage(content=data.get("content"))
 
     if role == "assistant":
-        return AssistantMessage(content=data.get("content"))
+        return AssistantMessage(
+            content=data.get("content"),
+            tool_calls=data.get("tool_calls"),
+        )
 
     if role == "tool":
         return ToolMessage(
             content=data.get("content"),
             tool_call_id=data.get("tool_call_id"),
         )
+
+    raise ValueError(f"Unknown role {role}.")

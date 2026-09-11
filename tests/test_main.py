@@ -28,13 +28,17 @@ def test_open_session_in_mem():
 
 def test_open_session_from_exist_file(tmp_cwd):
     session_file = tmp_cwd / "test.jsonl"
+    
+    from uuid import uuid4
+    
+    id = str(uuid4())
     test_msgs = [
-        json.dumps({"id": "1", "parent_id": "0", "role": "user", "content": "hi"})
+        json.dumps({"id": id, "parent_id": None, "role": "user", "content": "hi"})
         + "\n",
         json.dumps(
             {
-                "id": "2",
-                "parent_id": "1",
+                "id": str(uuid4()),
+                "parent_id": id,
                 "role": "assistant",
                 "content": "Hello! How can I help you today?",
             }
