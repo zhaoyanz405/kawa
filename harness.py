@@ -68,3 +68,7 @@ You are a helpful coding assistant. You help users by reading files, executing c
                 yield event
         finally:
             self._running = False
+
+    def print_tree(self):
+        self.session.print_tree()
+        

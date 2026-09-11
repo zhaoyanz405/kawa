@@ -79,3 +79,40 @@ class AgentSession:
             raise ValueError(f"entry {entry_id} not found.")
 
         self.active_leaf_id = entry_id
+
+    def print_tree(self):
+        childrens_by_parent_id = {}
+
+        root = None
+        for entry in self._entries_by_id.values():
+            parent_id = entry.parent_id
+            if parent_id is None:
+                if root is not None:
+                    raise ValueError("Multi root found.")
+                
+                root = entry.id
+                continue
+
+            if parent_id is not None and parent_id not in self._entries_by_id:
+                raise ValueError(f"Parent entry {parent_id} not found.")
+
+            childrens_by_parent_id.setdefault(parent_id, []).append(entry.id)
+
+        self._print_tree(root, childrens_by_parent_id=childrens_by_parent_id)
+
+    def _print_tree(self, cur_id, childrens_by_parent_id, depth=0):
+        if cur_id is None:
+            return
+        
+        value = self._entries_by_id.get(cur_id)
+        if not value:
+            raise ValueError(f"entry {cur_id} not found.")
+        
+        content = value.agent_message.content
+        if not content:
+            content = str(value.agent_message)
+            
+        print(".   " * depth, cur_id, value.agent_message.content[:20])
+
+        for child in childrens_by_parent_id[cur_id]:
+            self._print_tree(child, childrens_by_parent_id, depth=depth + 1)

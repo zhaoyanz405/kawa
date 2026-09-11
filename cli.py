@@ -39,9 +39,20 @@ class CLI:
     async def dispatch_loop(self) -> None:
         while True:
             user_input = await self.reader.queue.get()
-            if user_input.lower() in ["exit", "quit"]:
+            
+            user_input = user_input.lower()
+            if user_input in ["exit", "quit"]:
                 print("Exiting...")
                 break
+            
+            if user_input.startswith("/tree"):
+                self.harness.print_tree()
+                continue
+            
+            if user_input.startswith("/checkout"):
+                entry_id = user_input.split(" ")[0]
+                self.harness.session.checkout(entry_id)
+                continue
 
             while True:
                 if self._runner_task is None:
