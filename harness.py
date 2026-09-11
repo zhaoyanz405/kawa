@@ -1,3 +1,4 @@
+import logging
 from collections import deque
 from collections.abc import AsyncIterator
 
@@ -50,6 +51,10 @@ You are a helpful coding assistant. You help users by reading files, executing c
 
     async def _run(self, content: str) -> AsyncIterator[AgentEvent]:
         try:
+            if not content.strip():
+                logging.warning("Received empty content for prompt. Ignoring.")
+                return
+            
             self.session.append(UserMessage(content=content))
             async for event in run_agent_loop(
                 provider=self.provider,

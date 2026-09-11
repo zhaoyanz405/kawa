@@ -8,6 +8,7 @@ from agent_messages import (
 from agent_session import AgentSession
 from harness import AgentHarness
 from providers.base import AssistantReply
+from storage.base import JsonlSessionStorage
 
 
 class ScriptedProvider:
@@ -117,3 +118,32 @@ def test_same_session_is_used_by_follow_up_prompt() -> None:
         ]
 
     asyncio.run(scenario())
+
+
+def test_session_append_persists_message_to_storage(tmp_path) -> None:
+    session_file = tmp_path / "session.jsonl"
+    storage = JsonlSessionStorage(str(session_file))
+    session = AgentSession(storage=storage)
+
+    message = UserMessage(content="persist this")
+    session.append(message)
+
+    assert storage.read_all() == [message.to_dict()]
+    assert session.messages == [message.to_dict()]
+
+
+def test_loaded_session_continues_persisting_to_the_same_storage(tmp_path) -> None:
+    session_file = tmp_path / "session.jsonl"
+    storage = JsonlSessionStorage(str(session_file))
+    original = AgentSession(storage=storage)
+    original.append(UserMessage(content="first"))
+
+    loaded = AgentSession.load(storage)
+    second = AssistantMessage(content="second")
+    loaded.append(second)
+
+    assert loaded.messages == [
+        {"role": "user", "content": "first"},
+        second.to_dict(),
+    ]
+    assert storage.read_all() == loaded.messages
