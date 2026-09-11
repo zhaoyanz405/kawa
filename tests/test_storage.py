@@ -1,6 +1,7 @@
-import os
 import json
+
 from storage.base import JsonlSessionStorage
+
 
 def test_storage_append(tmp_path):
     tmp_file = tmp_path / "session.jsonl"

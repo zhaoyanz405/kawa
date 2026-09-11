@@ -1,0 +1,9 @@
+{"role": "user", "content": "test"}
+{"role": "assistant", "content": "Hello! I'm here and working. What can I help you with?\n\nI can:\n- Read and inspect files\n- Execute commands\n- Write or edit code\n- Create new files\n\nJust let me know what you'd like to do."}
+{"role": "user", "content": "yes"}
+{"role": "assistant", "content": "Got it! \ud83d\ude0a\n\nSince \"yes\" is a bit ambiguous, could you clarify what you'd like me to help with? For example:\n\n- **Read or inspect** an existing file\n- **Write or edit** code\n- **Create** a new file or project\n- **Run** a command\n\nJust let me know the file path or details, and I'll get started!"}
+{"role": "user", "content": "what did i say"}
+{"role": "assistant", "content": "You've said:\n\n1. **\"test\"** \u2014 your first message\n2. **\"yes\"** \u2014 your second message, in response to my greeting\n\nThat's all so far! Is there something specific you'd like to help me with next?"}
+{"role": "user", "content": "who are you"}
+{"role": "user", "content": "test"}
+{"role": "assistant", "content": "I'm a coding assistant! Here's a bit about me:\n\n## About Me\n\n- **Role**: I help you with coding tasks\n- **What I can do**:\n  - \ud83d\udcd6 **Read** and inspect files\n  - \u270f\ufe0f **Edit** existing code\n  - \ud83d\udcdd **Create** new files\n  - \ud83d\udcbb **Execute** commands\n  - \ud83d\udd0d **Debug** issues\n\n## How I Work\n\n- I can access and work with files on your system\n- I can run commands when needed\n- I make independent tool calls to get things done\n\n## Your Messages So Far\n\n1. `test` \u2014 first message\n2. `yes` \u2014 confirmation\n3. `what did i say` \u2014 asking about previous messages\n4. `who are you` + `test` \u2014 asking about me (current)\n\n---\n\nSo, **who are you**? Tell me a bit about yourself or what you're working on, and I'll help you get started! \ud83d\ude80"}

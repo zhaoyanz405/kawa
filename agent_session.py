@@ -1,8 +1,9 @@
 from agent_messages import AgentMessages
 from storage.base import BaseSessionStorage
+
+
 class AgentSession:
-    
-    def __init__(self, storage: BaseSessionStorage=None):
+    def __init__(self, storage: BaseSessionStorage = None):
         self._messages: list[dict] = []
         self.storage = storage
 
@@ -15,10 +16,10 @@ class AgentSession:
     @property
     def messages(self):
         return self._messages
-    
+
     def append(self, message: AgentMessages):
         content = message.to_dict()
-        if self.storage:
+        if self.storage is not None:
             self.storage.append(content)
-            
+
         self._messages.append(content)

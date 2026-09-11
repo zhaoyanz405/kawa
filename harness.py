@@ -3,11 +3,12 @@ from collections import deque
 from collections.abc import AsyncIterator
 
 from agent_loop import run_agent_loop
+from agent_messages import UserMessage
+from agent_session import AgentSession
 from events import AgentEvent
 from providers.base import Provider
 from tools.agent_tool import AgentTool
-from agent_session import AgentSession
-from agent_messages import UserMessage
+
 
 class AgentHarness:
     def __init__(
@@ -54,7 +55,7 @@ You are a helpful coding assistant. You help users by reading files, executing c
             if not content.strip():
                 logging.warning("Received empty content for prompt. Ignoring.")
                 return
-            
+
             self.session.append(UserMessage(content=content))
             async for event in run_agent_loop(
                 provider=self.provider,

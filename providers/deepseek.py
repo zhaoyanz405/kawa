@@ -9,7 +9,9 @@ from providers.base import AssistantReply, ToolCall
 class DeepSeekProvider:
     def __init__(self, api_key=None, model="deepseek-v4-flash"):
         self.api_key = api_key or os.environ.get("DEEPSEEK_API_KEY")
-        self.base_url = os.environ.get("DEEPSEEK_API_BASE_URL", "https://api.deepseek.com/v1")
+        self.base_url = os.environ.get(
+            "DEEPSEEK_API_BASE_URL", "https://api.deepseek.com/v1"
+        )
         self.model = model
         self.client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
 

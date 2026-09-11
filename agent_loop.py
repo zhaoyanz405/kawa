@@ -3,6 +3,8 @@ import json
 from collections import deque
 from collections.abc import AsyncIterator
 
+from agent_messages import AssistantMessage, ToolMessage, UserMessage
+from agent_session import AgentSession
 from events import (
     AgentEndEvent,
     AgentEvent,
@@ -14,8 +16,6 @@ from events import (
 )
 from providers.base import Provider
 from tools.agent_tool import AgentTool
-from agent_session import AgentSession
-from agent_messages import UserMessage, AgentMessages, AssistantMessage, ToolMessage
 
 
 async def run_agent_loop(
@@ -57,9 +57,10 @@ async def run_agent_loop(
 
                 continue
 
-            session.append(AssistantMessage(
-                content=response.content,
-                tool_calls=[
+            session.append(
+                AssistantMessage(
+                    content=response.content,
+                    tool_calls=[
                         {
                             "id": call.id,
                             "type": "function",
@@ -89,10 +90,12 @@ async def run_agent_loop(
                     yield ToolExecutionStartEvent(name=tool_name, arguments=tool_args)
 
                 yield ToolExecutionEndEvent(name=tool_name, result=result)
-                session.append(ToolMessage(
-                    tool_call_id=tool_id,
-                    content=json.dumps(result, ensure_ascii=False)
-                ))
+                session.append(
+                    ToolMessage(
+                        tool_call_id=tool_id,
+                        content=json.dumps(result, ensure_ascii=False),
+                    )
+                )
 
         if end_reason is None:
             yield MessageEvent(
