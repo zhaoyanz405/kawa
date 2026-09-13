@@ -2,7 +2,7 @@ from agent_messages import AgentMessages, load_from_dict
 from storage.base import BaseSessionStorage
 
 from .entry import SessionEntry as Entry
-
+from dataclasses import dataclass
 
 class AgentSession:
     def __init__(self, storage: BaseSessionStorage = None):
@@ -14,6 +14,11 @@ class AgentSession:
     def load(cls, storage: BaseSessionStorage):
         instance = cls(storage=storage)
         for msg in storage.read_all():
+            kind = msg.get("kind")
+            if kind and kind == "checkout":
+                instance.active_leaf_id = msg["active_leaf_id"] # let it crash if no valid
+                continue
+        
             id = msg.get("id")
             if not id:
                 raise ValueError("msg id is missing")
@@ -63,7 +68,7 @@ class AgentSession:
             self.storage.append(content)
 
         self.set_entry(entry)
-        self.checkout(entry_id=entry.id)
+        self.active_leaf_id = entry.id
         return entry.id
 
     def set_entry(self, entry: Entry):
@@ -78,6 +83,9 @@ class AgentSession:
         if entry_id not in self._entries_by_id:
             raise ValueError(f"entry {entry_id} not found.")
 
+        if self.storage is not None:
+            self.storage.append({"kind": "checkout", "active_leaf_id": entry_id})
+            
         self.active_leaf_id = entry_id
 
     def print_tree(self):
@@ -112,7 +120,10 @@ class AgentSession:
         if not content:
             content = str(value.agent_message)
             
-        print(".   " * depth, cur_id, value.agent_message.content[:20])
+        if self.active_leaf_id == cur_id:
+            print("**" * depth, cur_id, content[:30])
+        else:
+            print("  " * depth, cur_id, content[:30])
 
-        for child in childrens_by_parent_id[cur_id]:
+        for child in childrens_by_parent_id.get(cur_id, []):
             self._print_tree(child, childrens_by_parent_id, depth=depth + 1)

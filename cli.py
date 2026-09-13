@@ -40,8 +40,8 @@ class CLI:
         while True:
             user_input = await self.reader.queue.get()
             
-            user_input = user_input.lower()
-            if user_input in ["exit", "quit"]:
+            user_input = user_input.strip()
+            if user_input.lower() in ["exit", "quit"]:
                 print("Exiting...")
                 break
             
@@ -50,7 +50,11 @@ class CLI:
                 continue
             
             if user_input.startswith("/checkout"):
-                entry_id = user_input.split(" ")[0]
+                entry_id = user_input.replace("/checkout", "").strip()
+                if self.harness.is_running:
+                    print("cannot checkout while running.")
+                    continue
+                
                 self.harness.session.checkout(entry_id)
                 continue
 
